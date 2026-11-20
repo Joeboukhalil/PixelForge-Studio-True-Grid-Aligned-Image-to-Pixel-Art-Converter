@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixelForge Studio — True Pixel Art Converter</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    },
+                    colors: {
+                        studio: {
+                            950: '#0b0d11',
+                            900: '#12151c',
+                            850: '#171b24',
+                            800: '#1e232f',
+                            700: '#2a3142',
+                            600: '#3b445b',
+                            accent: '#6366f1',
+                            accentHover: '#4f46e5',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Crisp Pixel Rendering Guarantees */
+        .pixelated {
+            image-rendering: -moz-crisp-edges;
+            image-rendering: -webkit-crisp-edges;
+            image-rendering: pixelated;
+            image-rendering: crisp-edges;
+        }
+
+        /* Checkerboard transparency background */
+        .checkerboard {
+            background-color: #13161f;
+            background-image:
+                linear-gradient(45deg, #1b202c 25%, transparent 25%),
+                linear-gradient(-45deg, #1b202c 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, #1b202c 75%),
+                linear-gradient(-45deg, transparent 75%, #1b202c 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+        }
+
+        /* Custom Range Sliders */
+        input[type="range"] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+            cursor: pointer;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 6px;
+            border-radius: 999px;
+            background: #2a3142;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #6366f1;
+            border: 2px solid #e0e7ff;
+            margin-top: -5px;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.5);
+            transition: transform 0.1s ease, background-color 0.15s ease;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.12);
+            background: #818cf8;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #12151c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2a3142;
+            border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3b445b;
+        }
+    </style>
+</head>
+<body class="bg-studio-950 text-slate-200 font-sans antialiased selection:bg-indigo-500/30 selection:text-indigo-200 min-h-screen flex flex-col overflow-x-hidden">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Top Studio Header -->
+    <header class="bg-studio-900 border-b border-studio-800 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-30">
+        <!-- Brand -->
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center shadow-inner">
+                <svg class="w-5 h-5 text-indigo-400" viewBox="0 0 16 16" fill="currentColor">
+                    <rect x="2" y="2" width="4" height="4"/>
+                    <rect x="6" y="2" width="4" height="4" opacity="0.6"/>
+                    <rect x="10" y="2" width="4" height="4"/>
+                    <rect x="2" y="6" width="4" height="4" opacity="0.6"/>
+                    <rect x="6" y="6" width="4" height="4"/>
+                    <rect x="10" y="6" width="4" height="4" opacity="0.6"/>
+                    <rect x="2" y="10" width="4" height="4"/>
+                    <rect x="6" y="10" width="4" height="4" opacity="0.6"/>
+                    <rect x="10" y="10" width="4" height="4"/>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-bold text-sm sm:text-base tracking-tight text-white">PixelForge Studio</h1>
+                    <span class="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">True 1:1 Engine</span>
+                </div>
+                <p class="text-[11px] text-slate-400 hidden sm:block">Grid-aligned pixel art quantization & nearest-neighbor pipeline</p>
+            </div>
+        </div>
+
+        <!-- Sample Presets & Upload Trigger -->
+        <div class="flex items-center gap-2 flex-wrap">
+            <div class="hidden md:flex items-center gap-1.5 bg-studio-950 p-1 rounded-lg border border-studio-800">
+                <span class="text-[11px] text-slate-400 px-2 font-medium">Samples:</span>
+                <button data-sample="landscape" class="sample-btn px-2.5 py-1 text-xs rounded-md bg-studio-800 hover:bg-studio-700 text-slate-200 transition">Sunset Peaks</button>
+                <button data-sample="character" class="sample-btn px-2.5 py-1 text-xs rounded-md hover:bg-studio-800 text-slate-300 transition">Cyber Knight</button>
+                <button data-sample="potion" class="sample-btn px-2.5 py-1 text-xs rounded-md hover:bg-studio-800 text-slate-300 transition">Mana Flask</button>
+            </div>
+
+            <label for="file-input" class="cursor-pointer inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs sm:text-sm font-medium shadow-sm transition">
+                <i data-lucide="upload" class="w-4 h-4"></i>
+                <span>Upload Image</span>
+            </label>
+            <input id="file-input" type="file" accept="image/png,image/jpeg,image/webp" class="hidden">
+        </div>
+    </header>
+
+    <!-- Main Workspace Layout -->
+    <main class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+        <!-- Left / Center Interactive Viewport -->
+        <section class="flex-1 flex flex-col min-h-[52vh] lg:min-h-0 bg-studio-950 relative">
+
+            <!-- Viewport Toolbar -->
+            <div class="bg-studio-900/90 backdrop-blur border-b border-studio-800 px-3 py-2 flex flex-wrap items-center justify-between gap-2 z-20">
+                <!-- View Mode Controls -->
+                <div class="flex items-center gap-1 bg-studio-950 p-1 rounded-lg border border-studio-800">
+                    <button id="view-pixel-btn" class="px-2.5 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white transition flex items-center gap-1.5">
+                        <i data-lucide="grid" class="w-3.5 h-3.5"></i>
+                        <span>Pixel Art</span>
+                    </button>
+                    <button id="view-split-btn" class="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:bg-studio-800 transition flex items-center gap-1.5">
+                        <i data-lucide="columns" class="w-3.5 h-3.5"></i>
+                        <span>Split Compare</span>
+                    </button>
+                    <button id="view-original-btn" class="px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:bg-studio-800 transition flex items-center gap-1.5">
+                        <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                        <span>Original</span>
+                    </button>
+                </div>
+
+                <!-- Grid & Zoom Controls -->
+                <div class="flex items-center gap-2">
+                    <button id="toggle-grid-btn" class="px-2.5 py-1.5 rounded-lg text-xs font-medium border border-studio-700 bg-studio-850 hover:bg-studio-800 text-slate-300 transition flex items-center gap-1.5" title="Toggle 1px Pixel Grid Overlay">
+                        <i data-lucide="hash" class="w-3.5 h-3.5 text-indigo-400"></i>
+                        <span class="hidden sm:inline">Pixel Grid</span>
+                    </button>
+
+                    <div class="flex items-center bg-studio-950 border border-studio-800 rounded-lg p-0.5">
+                        <button id="zoom-out-btn" class="p-1.5 hover:bg-studio-800 rounded-md text-slate-300 transition" title="Zoom Out">
+                            <i data-lucide="zoom-out" class="w-3.5 h-3.5"></i>
+                        </button>
+                        <button id="zoom-fit-btn" class="px-2 py-1 text-xs font-mono text-slate-200 hover:bg-studio-800 rounded-md transition min-w-[54px] text-center" title="Fit to Screen">
+                            Fit
+                        </button>
+                        <button id="zoom-in-btn" class="p-1.5 hover:bg-studio-800 rounded-md text-slate-300 transition" title="Zoom In">
+                            <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Stage (Drag & Drop Zone) -->
+            <div id="drop-zone" class="flex-1 checkerboard relative overflow-auto flex items-center justify-center p-4 sm:p-8 select-none">
+                <!-- Drag Overlay -->
+                <div id="drag-overlay" class="hidden absolute inset-3 rounded-xl border-2 border-dashed border-indigo-400 bg-indigo-950/80 backdrop-blur-sm z-40 flex flex-col items-center justify-center text-center p-6 pointer-events-none">
+                    <i data-lucide="file-image" class="w-12 h-12 text-indigo-400 mb-3 animate-bounce"></i>
+                    <p class="text-base font-semibold text-white">Drop your image to convert</p>
+                    <p class="text-xs text-indigo-200 mt-1">Supports PNG, JPG, and WebP</p>
+                </div>
+
+                <!-- Interactive Display Stage Wrapper -->
+                <div id="stage-wrapper" class="relative shadow-2xl rounded-sm overflow-hidden border border-studio-700/80 bg-studio-900 transition-transform duration-75">
+                    <!-- Main Pixel Art Output Display Canvas -->
+                    <canvas id="display-canvas" class="block pixelated"></canvas>
+
+                    <!-- Split Comparison Overlay Canvas (Original Image Clipped) -->
+                    <div id="split-overlay" class="hidden absolute inset-0 overflow-hidden pointer-events-none" style="width: 50%;">
+                        <canvas id="original-display-canvas" class="block max-w-none"></canvas>
+                    </div>
+
+                    <!-- Split Slider Handle -->
+                    <div id="split-handle" class="hidden absolute top-0 bottom-0 w-0.5 bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.9)] cursor-ew-resize z-20" style="left: 50%;">
+                        <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-studio-900 border-2 border-indigo-400 shadow-lg flex items-center justify-center text-indigo-300">
+                            <i data-lucide="move-horizontal" class="w-4 h-4"></i>
+                        </div>
+                    </div>
+
+                    <!-- 1px Pixel Grid Overlay Canvas -->
+                    <canvas id="grid-canvas" class="hidden absolute inset-0 pointer-events-none"></canvas>
+                </div>
+
+                <!-- Mobile Sample Switcher Pill -->
+                <div class="md:hidden absolute top-3 left-3 flex items-center gap-1 bg-studio-900/90 backdrop-blur border border-studio-700 rounded-lg p-1 z-10">
+                    <button data-sample="landscape" class="sample-btn px-2 py-1 text-[11px] rounded bg-studio-800 text-slate-200">Peaks</button>
+                    <button data-sample="character" class="sample-btn px-2 py-1 text-[11px] rounded text-slate-300">Knight</button>
+                    <button data-sample="potion" class="sample-btn px-2 py-1 text-[11px] rounded text-slate-300">Flask</button>
+                </div>
+            </div>
+
+            <!-- Bottom Status Bar & Active Palette Swatches -->
+            <div class="bg-studio-900 border-t border-studio-800 px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                <!-- Stats Readout -->
+                <div class="flex items-center flex-wrap gap-3 font-mono text-[11px] text-slate-300">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                        <span>Grid: <strong id="stat-grid" class="text-white">64 × 64 px</strong></span>
+                    </div>
+                    <span class="text-studio-600">|</span>
+                    <div>Colors: <strong id="stat-colors" class="text-indigo-300">16</strong></div>
+                    <span class="text-studio-600">|</span>
+                    <div>Source: <strong id="stat-source" class="text-slate-400">512 × 512 px</strong></div>
+                </div>
+
+                <!-- Active Palette Swatch Strip -->
+                <div class="flex items-center gap-2">
+                    <div id="swatch-strip" class="flex items-center gap-1 overflow-x-auto max-w-[260px] sm:max-w-[340px] py-0.5">
+                        <!-- Swatches populated dynamically -->
+                    </div>
+                    <button id="copy-palette-btn" class="shrink-0 px-2 py-1 rounded bg-studio-800 hover:bg-studio-700 border border-studio-700 text-[11px] font-medium text-slate-200 flex items-center gap-1 transition" title="Copy Palette Hex Codes">
+                        <i data-lucide="copy" class="w-3 h-3 text-indigo-400"></i>
+                        <span>HEX</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Inspector Sidebar (Controls & Export) -->
+        <aside class="w-full lg:w-[370px] xl:w-[400px] bg-studio-900 border-t lg:border-t-0 lg:border-l border-studio-800 flex flex-col lg:h-[calc(100vh-57px)] overflow-y-auto">
+
+            <div class="p-4 space-y-5 flex-1">
+
+                <!-- 1. Grid Resolution & Sampling -->
+                <div class="bg-studio-850/80 border border-studio-800 rounded-xl p-3.5 space-y-3.5">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="grid-3x3" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            1. Native Pixel Grid
+                        </h2>
+                        <span id="grid-size-badge" class="font-mono text-xs px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">64 px</span>
+                    </div>
+
+                    <!-- Preset Resolution Pills -->
+                    <div class="grid grid-cols-7 gap-1">
+                        <button data-res="32" class="res-preset py-1.5 rounded-md text-xs font-mono bg-studio-900 hover:bg-studio-700 border border-studio-700 text-slate-300 transition">32</button>
+                        <button data-res="48" class="res-preset py-1.5 rounded-md text-xs font-mono bg-studio-900 hover:bg-studio-700 border border-studio-700 text-slate-300 transition">48</button>
+                        <button data-res="64" class="res-preset py-1.5 rounded-md text-xs font-mono bg-indigo-600 border border-indigo-500 text-white font-semibold transition">64</button>
+                        <button data-res="96" class="res-preset py-1.5 rounded-md text-xs font-mono bg-studio-900 hover:bg-studio-700 border border-studio-700 text-slate-300 transition">96</button>
+                        <button data-res="128" class="res-preset py-1.5 rounded-md text-xs font-mono bg-studio-900 hover:bg-studio-700 border border-studio-700 text-slate-300 transition">128</button>
+                        <button data-res="160" class="res-preset py-1.5 rounded-md text-xs font-mono bg-studio-900 hover:bg-studio-700 border border-studio-700 text-slate-300 transition">160</button>
+                        <button data-res="256" class="res-preset py-1.5 rounded-md text-xs font-mono bg-studio-900 hover:bg-studio-700 border border-studio-700 text-slate-300 transition">256</button>
+                    </div>
+
+                    <!-- Fine Slider -->
+                    <div>
+                        <input id="grid-size-slider" type="range" min="16" max="256" step="2" value="64" class="w-full">
+                        <div class="flex justify-between text-[10px] text-slate-500 font-mono mt-1">
+                            <span>16px (Micro)</span>
+                            <span>128px (16-Bit)</span>
+                            <span>256px (HD Sprite)</span>
+                        </div>
+                    </div>
+
+                    <!-- Sampling Method -->
+                    <div class="pt-1">
+                        <label class="block text-[11px] font-medium text-slate-400 mb-1.5">Pixel Sampling Mode</label>
+                        <div class="grid grid-cols-2 gap-1.5 bg-studio-950 p-1 rounded-lg border border-studio-800">
+                            <button id="sample-center-btn" class="py-1.5 px-2 rounded-md text-xs font-medium bg-indigo-600 text-white transition">
+                                Center Crisp
+                            </button>
+                            <button id="sample-average-btn" class="py-1.5 px-2 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition">
+                                Area Average
+                            </button>
+                        </div>
+                        <p id="sampling-hint" class="text-[11px] text-slate-400 mt-1.5">Samples exact cell centers to prevent blurry anti-aliased edge bleeding.</p>
+                    </div>
+                </div>
+
+                <!-- 2. Color Palette Quantization -->
+                <div class="bg-studio-850/80 border border-studio-800 rounded-xl p-3.5 space-y-3.5">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="palette" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            2. Color Palette
+                        </h2>
+                        <span id="palette-mode-badge" class="font-mono text-[11px] text-slate-400">Adaptive</span>
+                    </div>
+
+                    <!-- Palette Preset Selector -->
+                    <div>
+                        <label for="palette-select" class="block text-[11px] font-medium text-slate-400 mb-1">Palette Engine / Retro Preset</label>
+                        <select id="palette-select" class="w-full bg-studio-950 border border-studio-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                            <option value="adaptive">Auto-Extracted Adaptive (Median Cut)</option>
+                            <option value="pico8">PICO-8 (16 Colors)</option>
+                            <option value="gameboy">Nintendo Game Boy DMG (4 Colors)</option>
+                            <option value="nes">Nintendo NES Classic (24 Colors)</option>
+                            <option value="c64">Commodore 64 (16 Colors)</option>
+                            <option value="cyberpunk">Cyberpunk Neon (12 Colors)</option>
+                            <option value="sunset">Warm Sunset Synth (10 Colors)</option>
+                            <option value="monochrome">1-Bit Crisp Noir (2 Colors)</option>
+                        </select>
+                    </div>
+
+                    <!-- Adaptive Color Count Slider -->
+                    <div id="adaptive-count-wrapper">
+                        <div class="flex justify-between items-center mb-1">
+                            <label for="color-count-slider" class="text-[11px] font-medium text-slate-400">Max Adaptive Colors</label>
+                            <span id="color-count-val" class="font-mono text-xs text-indigo-300 font-semibold">16</span>
+                        </div>
+                        <input id="color-count-slider" type="range" min="2" max="64" step="1" value="16" class="w-full">
+                    </div>
+
+                    <!-- Dithering Controls -->
+                    <div class="pt-1 border-t border-studio-800/80 space-y-2.5">
+                        <div>
+                            <label for="dither-select" class="block text-[11px] font-medium text-slate-400 mb-1">Dithering Pattern</label>
+                            <select id="dither-select" class="w-full bg-studio-950 border border-studio-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500">
+                                <option value="none">None (Clean Flat Clusters)</option>
+                                <option value="bayer2">Ordered Bayer 2×2 (Classic Crosshatch)</option>
+                                <option value="bayer4" selected>Ordered Bayer 4×4 (Retro Halftone)</option>
+                                <option value="floyd">Floyd-Steinberg (Organic Error Diffusion)</option>
+                            </select>
+                        </div>
+
+                        <div id="dither-strength-wrapper">
+                            <div class="flex justify-between items-center mb-1">
+                                <label for="dither-strength-slider" class="text-[11px] font-medium text-slate-400">Dithering Intensity</label>
+                                <span id="dither-strength-val" class="font-mono text-xs text-slate-300">45%</span>
+                            </div>
+                            <input id="dither-strength-slider" type="range" min="0" max="100" step="5" value="45" class="w-full">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Pre-Processing & Sprite Cleanup -->
+                <div class="bg-studio-850/80 border border-studio-800 rounded-xl p-3.5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                            <i data-lucide="sliders" class="w-3.5 h-3.5 text-indigo-400"></i>
+                            3. Pre-Process & Crispness
+                        </h2>
+                        <button id="reset-adjustments-btn" class="text-[11px] text-indigo-400 hover:text-indigo-300 transition">Reset</button>
+                    </div>
+
+                    <!-- Contrast -->
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-slate-400">Contrast</span>
+                            <span id="contrast-val" class="font-mono text-slate-300">+12%</span>
+                        </div>
+                        <input id="contrast-slider" type="range" min="-50" max="80" step="2" value="12" class="w-full">
+                    </div>
+
+                    <!-- Saturation -->
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-slate-400">Saturation</span>
+                            <span id="saturation-val" class="font-mono text-slate-300">+15%</span>
+                        </div>
+                        <input id="saturation-slider" type="range" min="-100" max="100" step="5" value="15" class="w-full">
+                    </div>
+
+                    <!-- Brightness -->
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-slate-400">Brightness</span>
+                            <span id="brightness-val" class="font-mono text-slate-300">0%</span>
+                        </div>
+                        <input id="brightness-slider" type="range" min="-50" max="50" step="2" value="0" class="w-full">
+                    </div>
+
+                    <!-- Edge Sharpening -->
+                    <div>
+                        <div class="flex justify-between text-[11px] mb-1">
+                            <span class="text-slate-400">Pre-Scale Sharpen</span>
+                            <span id="sharpen-val" class="font-mono text-slate-300">25%</span>
+                        </div>
+                        <input id="sharpen-slider" type="range" min="0" max="100" step="5" value="25" class="w-full">
+                    </div>
+
+                    <!-- 1px Dark Outline Enhancement Toggle -->
+                    <label class="flex items-center justify-between pt-2 border-t border-studio-800/80 cursor-pointer">
+                        <div>
+                            <span class="text-xs font-medium text-slate-200 block">1px Silhouette Outline</span>
+                            <span class="text-[10px] text-slate-400">Adds crisp dark pixel borders on high-contrast edges</span>
+                        </div>
+                        <input id="outline-toggle" type="checkbox" class="sr-only peer">
+                        <div class="w-9 h-5 bg-studio-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all relative peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <!-- 4. Export & Download -->
+                <div class="bg-studio-850 border border-indigo-500/30 rounded-xl p-3.5 space-y-3">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-indigo-300 flex items-center gap-1.5">
+                        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                        4. Export Crisp PNG
+                    </h2>
+
+                    <!-- True 1:1 Native Export -->
+                    <button id="export-native-btn" class="w-full py-2.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 text-white text-xs font-semibold shadow-md transition flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <i data-lucide="file-check" class="w-4 h-4"></i>
+                            <span>Download 1:1 True Pixels</span>
+                        </span>
+                        <span id="native-export-dim" class="font-mono text-[11px] bg-indigo-800/80 px-2 py-0.5 rounded">64×64</span>
+                    </button>
+
+                    <!-- Nearest-Neighbor Upscaled Export -->
+                    <div class="pt-1 space-y-2">
+                        <div class="flex items-center justify-between gap-2">
+                            <label for="upscale-select" class="text-[11px] text-slate-400">Upscale Multiplier (Sharp):</label>
+                            <select id="upscale-select" class="bg-studio-950 border border-studio-700 rounded-md px-2 py-1 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500">
+                                <option value="2">2× Scale</option>
+                                <option value="4">4× Scale</option>
+                                <option value="8" selected>8× Scale</option>
+                                <option value="12">12× Scale</option>
+                                <option value="16">16× Scale</option>
+                            </select>
+                        </div>
+
+                        <button id="export-upscaled-btn" class="w-full py-2.5 px-3 rounded-lg bg-studio-800 hover:bg-studio-700 border border-studio-600 text-slate-100 text-xs font-semibold transition flex items-center justify-between">
+                            <span class="flex items-center gap-2">
+                                <i data-lucide="maximize-2" class="w-4 h-4 text-indigo-400"></i>
+                                <span>Download Upscaled PNG</span>
+                            </span>
+                            <span id="upscaled-export-dim" class="font-mono text-[11px] text-indigo-300">512×512</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </aside>
+    </main>
+
+    <!-- Hidden Offscreen Canvases for True Pixel Processing -->
+    <canvas id="source-canvas" class="hidden"></canvas>
+    <canvas id="native-pixel-canvas" class="hidden"></canvas>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+
+        // =========================================================================
+        // 1. CURATED RETRO & CLASSIC PALETTES (RGB Arrays)
+        // =========================================================================
+        const RETRO_PALETTES = {
+            gameboy: [
+                [15, 56, 15], [48, 98, 48], [139, 172, 15], [155, 188, 15]
+            ],
+            pico8: [
+                [0, 0, 0], [29, 43, 83], [126, 37, 83], [0, 135, 81],
+                [171, 82, 54], [95, 87, 79], [194, 195, 199], [255, 241, 232],
+                [255, 0, 77], [255, 163, 0], [255, 236, 39], [0, 228, 54],
+                [41, 173, 255], [131, 118, 156], [255, 119, 168], [255, 204, 170]
+            ],
+            nes: [
+                [124, 124, 124], [0, 0, 252], [0, 0, 188], [68, 40, 188],
+                [148, 0, 132], [168, 0, 32], [168, 16, 0], [136, 20, 0],
+                [80, 48, 0], [0, 120, 0], [0, 104, 0], [0, 88, 0],
+                [0, 64, 88], [0, 0, 0], [188, 188, 188], [0, 120, 248],
+                [0, 88, 248], [104, 68, 252], [216, 0, 204], [228, 0, 88],
+                [248, 56, 0], [228, 92, 16], [172, 124, 0], [0, 184, 0],
+                [248, 248, 248], [60, 188, 252], [248, 120, 248], [248, 184, 248]
+            ],
+            c64: [
+                [0, 0, 0], [255, 255, 255], [136, 0, 0], [170, 255, 238],
+                [204, 68, 204], [0, 204, 85], [0, 0, 170], [238, 238, 119],
+                [221, 136, 85], [102, 68, 0], [255, 119, 119], [51, 51, 51],
+                [119, 119, 119], [170, 255, 102], [0, 136, 255], [187, 187, 187]
+            ],
+            cyberpunk: [
+                [11, 12, 28], [27, 25, 58], [58, 36, 94], [116, 47, 138],
+                [214, 49, 137], [255, 94, 126], [255, 184, 108], [248, 248, 242],
+                [80, 250, 123], [18, 184, 196], [28, 107, 160], [139, 233, 253]
+            ],
+            sunset: [
+                [26, 16, 38], [62, 24, 64], [115, 36, 78], [173, 56, 74],
+                [224, 94, 66], [247, 148, 66], [252, 206, 104], [255, 246, 189],
+                [77, 105, 115], [40, 56, 74]
+            ],
+            monochrome: [
+                [18, 20, 24], [242, 244, 248]
+            ]
+        };
+
+        // Bayer Ordered Dithering Matrices
+        const BAYER_2X2 = [
+            [0, 2],
+            [3, 1]
+        ];
+        const BAYER_4X4 = [
+            [ 0,  8,  2, 10],
+            [12,  4, 14,  6],
+            [ 3, 11,  1,  9],
+            [15,  7, 13,  5]
+        ];
+
+        // =========================================================================
+        // 2. APPLICATION STATE
+        // =========================================================================
+        const state = {
+            sourceImage: null,
+            sourceWidth: 512,
+            sourceHeight: 512,
+            gridMaxDim: 64,
+            nativeWidth: 64,
+            nativeHeight: 64,
+            samplingMode: 'center', // 'center' | 'average'
+            paletteMode: 'adaptive',
+            adaptiveColorCount: 16,
+            activePalette: [],
+            ditherMode: 'bayer4', // 'none' | 'bayer2' | 'bayer4' | 'floyd'
+            ditherStrength: 45,
+            contrast: 12,
+            saturation: 15,
+            brightness: 0,
+            sharpen: 25,
+            outline: false,
+            viewMode: 'pixel', // 'pixel' | 'split' | 'original'
+            showGrid: false,
+            zoom: null, // null means auto-fit
+            splitPercent: 50,
+            fileName: 'pixel-art'
+        };
+
+        // DOM Elements
+        const els = {
+            fileInput: document.getElementById('file-input'),
+            dropZone: document.getElementById('drop-zone'),
+            dragOverlay: document.getElementById('drag-overlay'),
+            stageWrapper: document.getElementById('stage-wrapper'),
+            sourceCanvas: document.getElementById('source-canvas'),
+            nativeCanvas: document.getElementById('native-pixel-canvas'),
+            displayCanvas: document.getElementById('display-canvas'),
+            origDisplayCanvas: document.getElementById('original-display-canvas'),
+            gridCanvas: document.getElementById('grid-canvas'),
+            splitOverlay: document.getElementById('split-overlay'),
+            splitHandle: document.getElementById('split-handle'),
+            // Controls
+            gridSizeSlider: document.getElementById('grid-size-slider'),
+            gridSizeBadge: document.getElementById('grid-size-badge'),
+            sampleCenterBtn: document.getElementById('sample-center-btn'),
+            sampleAverageBtn: document.getElementById('sample-average-btn'),
+            samplingHint: document.getElementById('sampling-hint'),
+            paletteSelect: document.getElementById('palette-select'),
+            paletteModeBadge: document.getElementById('palette-mode-badge'),
+            adaptiveCountWrapper: document.getElementById('adaptive-count-wrapper'),
+            colorCountSlider: document.getElementById('color-count-slider'),
+            colorCountVal: document.getElementById('color-count-val'),
+            ditherSelect: document.getElementById('dither-select'),
+            ditherStrengthWrapper: document.getElementById('dither-strength-wrapper'),
+            ditherStrengthSlider: document.getElementById('dither-strength-slider'),
+            ditherStrengthVal: document.getElementById('dither-strength-val'),
+            contrastSlider: document.getElementById('contrast-slider'),
+            contrastVal: document.getElementById('contrast-val'),
+            saturationSlider: document.getElementById('saturation-slider'),
+            saturationVal: document.getElementById('saturation-val'),
+            brightnessSlider: document.getElementById('brightness-slider'),
+            brightnessVal: document.getElementById('brightness-val'),
+            sharpenSlider: document.getElementById('sharpen-slider'),
+            sharpenVal: document.getElementById('sharpen-val'),
+            outlineToggle: document.getElementById('outline-toggle'),
+            resetAdjustmentsBtn: document.getElementById('reset-adjustments-btn'),
+            // Viewport Toolbar
+            viewPixelBtn: document.getElementById('view-pixel-btn'),
+            viewSplitBtn: document.getElementById('view-split-btn'),
+            viewOriginalBtn: document.getElementById('view-original-btn'),
+            toggleGridBtn: document.getElementById('toggle-grid-btn'),
+            zoomOutBtn: document.getElementById('zoom-out-btn'),
+            zoomFitBtn: document.getElementById('zoom-fit-btn'),
+            zoomInBtn: document.getElementById('zoom-in-btn'),
+            // Stats & Swatches
+            statGrid: document.getElementById('stat-grid'),
+            statColors: document.getElementById('stat-colors'),
+            statSource: document.getElementById('stat-source'),
+            swatchStrip: document.getElementById('swatch-strip'),
+            copyPaletteBtn: document.getElementById('copy-palette-btn'),
+            // Export
+            exportNativeBtn: document.getElementById('export-native-btn'),
+            nativeExportDim: document.getElementById('native-export-dim'),
+            upscaleSelect: document.getElementById('upscale-select'),
+            exportUpscaledBtn: document.getElementById('export-upscaled-btn'),
+            upscaledExportDim: document.getElementById('upscaled-export-dim'),
+        };
+
+        // =========================================================================
+        // 3. TOAST NOTIFICATION HELPER
+        // =========================================================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            const borderClass = type === 'success' ? 'border-emerald-500/50 bg-studio-900 text-emerald-200' : 'border-indigo-500/50 bg-studio-900 text-slate-100';
+            toast.className = `pointer-events-auto px-4 py-2.5 rounded-lg border shadow-xl text-xs font-medium flex items-center gap-2 transition-all duration-300 transform translate-y-2 opacity-0 ${borderClass}`;
+            toast.innerHTML = `<span>${message}</span>`;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-2', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 2600);
+        }
+
+        // =========================================================================
+        // 4. PROCEDURAL SAMPLE IMAGE GENERATOR (Instant Demo Without Upload)
+        // =========================================================================
+        function generateSampleImage(presetName) {
+            const size = 512;
+            const c = document.createElement('canvas');
+            c.width = size;
+            c.height = size;
+            const ctx = c.getContext('2d');
+
+            if (presetName === 'landscape') {
+                state.fileName = 'sunset-peaks';
+                // Sky Gradient
+                const sky = ctx.createLinearGradient(0, 0, 0, size * 0.72);
+                sky.addColorStop(0, '#16113a');
+                sky.addColorStop(0.35, '#591c5d');
+                sky.addColorStop(0.7, '#d94e5a');
+                sky.addColorStop(1, '#ffbe55');
+                ctx.fillStyle = sky;
+                ctx.fillRect(0, 0, size, size);
+
+                // Glowing Sun
+                ctx.fillStyle = '#fff5b8';
+                ctx.beginPath();
+                ctx.arc(256, 235, 78, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Sun Horizon Bands
+                ctx.fillStyle = '#f28d52';
+                ctx.fillRect(160, 255, 192, 8);
+                ctx.fillRect(160, 275, 192, 12);
+
+                // Far Mountain Range
+                ctx.fillStyle = '#381e4a';
+                ctx.beginPath();
+                ctx.moveTo(0, 340);
+                ctx.lineTo(110, 210);
+                ctx.lineTo(220, 310);
+                ctx.lineTo(350, 190);
+                ctx.lineTo(512, 330);
+                ctx.lineTo(512, 400);
+                ctx.lineTo(0, 400);
+                ctx.fill();
+
+                // Near Mountain Range + Highlight Edge
+                ctx.fillStyle = '#1d1230';
+                ctx.beginPath();
+                ctx.moveTo(0, 370);
+                ctx.lineTo(175, 240);
+                ctx.lineTo(310, 355);
+                ctx.lineTo(435, 255);
+                ctx.lineTo(512, 345);
+                ctx.lineTo(512, 420);
+                ctx.lineTo(0, 420);
+                ctx.fill();
+
+                // Reflection Lake
+                const lake = ctx.createLinearGradient(0, 350, 0, 512);
+                lake.addColorStop(0, '#2a1640');
+                lake.addColorStop(1, '#0e091c');
+                ctx.fillStyle = lake;
+                ctx.fillRect(0, 355, size, 157);
+
+                // Water Sun Shimmer
+                ctx.fillStyle = '#ffbe55';
+                for (let i = 0; i < 9; i++) {
+                    const w = 110 - i * 10;
+                    ctx.fillRect(256 - w / 2, 365 + i * 14, w, 5);
+                }
+            } else if (presetName === 'character') {
+                state.fileName = 'cyber-knight';
+                // Dark Tech Backdrop
+                const bg = ctx.createRadialGradient(256, 256, 40, 256, 256, 360);
+                bg.addColorStop(0, '#262b44');
+                bg.addColorStop(1, '#0f111a');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, size, size);
+
+                // Neon Ring Behind Helmet
+                ctx.strokeStyle = '#ff2a85';
+                ctx.lineWidth = 18;
+                ctx.beginPath();
+                ctx.arc(256, 256, 175, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Shoulders / Armor
+                ctx.fillStyle = '#3a4466';
+                ctx.beginPath();
+                ctx.roundRect(105, 340, 302, 150, 48);
+                ctx.fill();
+                ctx.fillStyle = '#5a6988';
+                ctx.beginPath();
+                ctx.roundRect(130, 355, 252, 110, 32);
+                ctx.fill();
+
+                // Helmet Base
+                ctx.fillStyle = '#8b9bb4';
+                ctx.beginPath();
+                ctx.roundRect(156, 120, 200, 230, 56);
+                ctx.fill();
+
+                // Helmet Crest
+                ctx.fillStyle = '#ff004d';
+                ctx.beginPath();
+                ctx.moveTo(256, 65);
+                ctx.lineTo(290, 135);
+                ctx.lineTo(222, 135);
+                ctx.closePath();
+                ctx.fill();
+
+                // Visor Dark Recess
+                ctx.fillStyle = '#181425';
+                ctx.beginPath();
+                ctx.roundRect(176, 195, 160, 62, 16);
+                ctx.fill();
+
+                // Glowing Cyan Visor Eyes
+                ctx.fillStyle = '#00f5d4';
+                ctx.fillRect(194, 214, 48, 22);
+                ctx.fillRect(270, 214, 48, 22);
+
+                // Specular Metal Highlight
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(184, 145, 24, 34);
+            } else {
+                state.fileName = 'mana-flask';
+                // Deep Alchemy Background
+                ctx.fillStyle = '#141824';
+                ctx.fillRect(0, 0, size, size);
+
+                // Wooden Table
+                ctx.fillStyle = '#3e2723';
+                ctx.fillRect(0, 390, size, 122);
+                ctx.fillStyle = '#5d4037';
+                ctx.fillRect(0, 390, size, 14);
+
+                // Glass Flask Body
+                ctx.fillStyle = '#263238';
+                ctx.beginPath();
+                ctx.arc(256, 290, 125, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Glowing Mana Liquid
+                const liquid = ctx.createLinearGradient(0, 210, 0, 410);
+                liquid.addColorStop(0, '#00e5ff');
+                liquid.addColorStop(1, '#2962ff');
+                ctx.fillStyle = liquid;
+                ctx.beginPath();
+                ctx.arc(256, 290, 108, 0.05 * Math.PI, 0.95 * Math.PI);
+                ctx.fill();
+
+                // Liquid Top Surface
+                ctx.fillStyle = '#84ffff';
+                ctx.beginPath();
+                ctx.ellipse(256, 305, 106, 18, 0, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Flask Neck & Rim
+                ctx.fillStyle = '#455a64';
+                ctx.fillRect(216, 115, 80, 75);
+                ctx.fillStyle = '#78909c';
+                ctx.fillRect(204, 105, 104, 20);
+
+                // Cork Stopper
+                ctx.fillStyle = '#a1887f';
+                ctx.fillRect(224, 72, 64, 36);
+
+                // Glass Specular Highlight
+                ctx.fillStyle = 'rgba(255,255,255,0.75)';
+                ctx.beginPath();
+                ctx.ellipse(196, 245, 16, 44, -0.35, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const img = new Image();
+            img.onload = () => loadSourceImage(img);
+            img.src = c.toDataURL('image/png');
+        }
+
+        // =========================================================================
+        // 5. IMAGE LOADING & SOURCE PREPARATION
+        // =========================================================================
+        function loadSourceImage(img) {
+            state.sourceImage = img;
+            state.sourceWidth = img.naturalWidth || img.width;
+            state.sourceHeight = img.naturalHeight || img.height;
+
+            // Cap working source canvas at 1024px max dimension for snappy real-time processing
+            const maxWork = 1024;
+            let workW = state.sourceWidth;
+            let workH = state.sourceHeight;
+            if (workW > maxWork || workH > maxWork) {
+                const ratio = Math.min(maxWork / workW, maxWork / workH);
+                workW = Math.round(workW * ratio);
+                workH = Math.round(workH * ratio);
+            }
+
+            els.sourceCanvas.width = workW;
+            els.sourceCanvas.height = workH;
+            const sCtx = els.sourceCanvas.getContext('2d', { willReadFrequently: true });
+            sCtx.clearRect(0, 0, workW, workH);
+            sCtx.drawImage(img, 0, 0, workW, workH);
+
+            els.statSource.textContent = `${state.sourceWidth} × ${state.sourceHeight} px`;
+            processPixelArt();
+        }
+
+        // =========================================================================
+        // 6. CORE TRUE PIXEL ART PIPELINE
+        // =========================================================================
+        function processPixelArt() {
+            if (!state.sourceImage) return;
+
+            const srcW = els.sourceCanvas.width;
+            const srcH = els.sourceCanvas.height;
+            const sCtx = els.sourceCanvas.getContext('2d', { willReadFrequently: true });
+            let srcData = sCtx.getImageData(0, 0, srcW, srcH);
+
+            // Step A: Pre-processing (Contrast, Saturation, Brightness, Edge Sharpen)
+            srcData = applyPreProcessing(srcData);
+
+            // Step B: Calculate Native Pixel Grid Dimensions preserving aspect ratio
+            const maxDim = state.gridMaxDim;
+            let targetW, targetH;
+            if (srcW >= srcH) {
+                targetW = maxDim;
+                targetH = Math.max(1, Math.round((srcH / srcW) * maxDim));
+            } else {
+                targetH = maxDim;
+                targetW = Math.max(1, Math.round((srcW / srcH) * maxDim));
+            }
+            state.nativeWidth = targetW;
+            state.nativeHeight = targetH;
+
+            // Step C: True Grid-Aligned Sampling (Center-Pixel vs Area Average)
+            const gridBuffer = sampleToGrid(srcData, targetW, targetH, state.samplingMode);
+
+            // Step D: Determine Color Palette (Adaptive Median Cut or Curated Retro)
+            let palette;
+            if (state.paletteMode === 'adaptive') {
+                palette = extractMedianCutPalette(gridBuffer, state.adaptiveColorCount);
+            } else {
+                palette = RETRO_PALETTES[state.paletteMode] || RETRO_PALETTES.pico8;
+            }
+            state.activePalette = palette;
+
+            // Step E: Color Quantization + Dithering
+            const quantizedBuffer = quantizeAndDither(
+                gridBuffer,
+                targetW,
+                targetH,
+                palette,
+                state.ditherMode,
+                state.ditherStrength / 100
+            );
+
+            // Step F: Optional 1px Silhouette Dark Outline
+            if (state.outline) {
+                applyPixelOutline(quantizedBuffer, targetW, targetH, palette);
+            }
+
+            // Step G: Write exact 1:1 pixels onto Native Pixel Canvas
+            els.nativeCanvas.width = targetW;
+            els.nativeCanvas.height = targetH;
+            const nCtx = els.nativeCanvas.getContext('2d');
+            const outImgData = new ImageData(quantizedBuffer, targetW, targetH);
+            nCtx.putImageData(outImgData, 0, 0);
+
+            // Update UI Readouts, Swatches & Viewport
+            updateUIReadouts();
+            renderViewport();
+        }
+
+        // --- Step A: Pre-Processing Filters & Convolution Sharpening ---
+        function applyPreProcessing(imageData) {
+            const { width, height, data } = imageData;
+            const out = new Uint8ClampedArray(data);
+
+            const contrastFactor = (259 * (state.contrast * 2.55 + 255)) / (255 * (259 - state.contrast * 2.55));
+            const satFactor = 1 + state.saturation / 100;
+            const brightOffset = state.brightness * 2.55;
+
+            for (let i = 0; i < out.length; i += 4) {
+                if (out[i + 3] === 0) continue;
+                let r = out[i];
+                let g = out[i + 1];
+                let b = out[i + 2];
+
+                // Brightness
+                r += brightOffset;
+                g += brightOffset;
+                b += brightOffset;
+
+                // Contrast
+                r = contrastFactor * (r - 128) + 128;
+                g = contrastFactor * (g - 128) + 128;
+                b = contrastFactor * (b - 128) + 128;
+
+                // Saturation (Luminance preserving)
+                const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+                r = lum + satFactor * (r - lum);
+                g = lum + satFactor * (g - lum);
+                b = lum + satFactor * (b - lum);
+
+                out[i] = r;
+                out[i + 1] = g;
+                out[i + 2] = b;
+            }
+
+            // Unsharp / Crisp Edge Kernel before downscaling
+            if (state.sharpen > 0) {
+                const amount = (state.sharpen / 100) * 1.4;
+                const copy = new Uint8ClampedArray(out);
+                for (let y = 1; y < height - 1; y++) {
+                    for (let x = 1; x < width - 1; x++) {
+                        const idx = (y * width + x) * 4;
+                        if (copy[idx + 3] === 0) continue;
+                        for (let c = 0; c < 3; c++) {
+                            const center = copy[idx + c];
+                            const neighbors =
+                                copy[((y - 1) * width + x) * 4 + c] +
+                                copy[((y + 1) * width + x) * 4 + c] +
+                                copy[(y * width + (x - 1)) * 4 + c] +
+                                copy[(y * width + (x + 1)) * 4 + c];
+                            const laplacian = center * 4 - neighbors;
+                            out[idx + c] = center + laplacian * amount * 0.35;
+                        }
+                    }
+                }
+            }
+
+            return new ImageData(out, width, height);
+        }
+
+        // --- Step C: True Grid Sampling ---
+        function sampleToGrid(srcData, targetW, targetH, mode) {
+            const { width: srcW, height: srcH, data } = srcData;
+            const grid = new Uint8ClampedArray(targetW * targetH * 4);
+            const cellW = srcW / targetW;
+            const cellH = srcH / targetH;
+
+            for (let gy = 0; gy < targetH; gy++) {
+                for (let gx = 0; gx < targetW; gx++) {
+                    const outIdx = (gy * targetW + gx) * 4;
+
+                    if (mode === 'center') {
+                        // Exact center of the cell avoids anti-aliased border mixing
+                        const sx = Math.min(srcW - 1, Math.floor((gx + 0.5) * cellW));
+                        const sy = Math.min(srcH - 1, Math.floor((gy + 0.5) * cellH));
+                        const sIdx = (sy * srcW + sx) * 4;
+                        grid[outIdx] = data[sIdx];
+                        grid[outIdx + 1] = data[sIdx + 1];
+                        grid[outIdx + 2] = data[sIdx + 2];
+                        grid[outIdx + 3] = data[sIdx + 3] < 128 ? 0 : 255;
+                    } else {
+                        // Box-Average Sampling across cell
+                        const startX = Math.floor(gx * cellW);
+                        const endX = Math.max(startX + 1, Math.min(srcW, Math.floor((gx + 1) * cellW)));
+                        const startY = Math.floor(gy * cellH);
+                        const endY = Math.max(startY + 1, Math.min(srcH, Math.floor((gy + 1) * cellH)));
+
+                        let r = 0, g = 0, b = 0, a = 0, count = 0;
+                        for (let sy = startY; sy < endY; sy++) {
+                            for (let sx = startX; sx < endX; sx++) {
+                                const sIdx = (sy * srcW + sx) * 4;
+                                r += data[sIdx];
+                                g += data[sIdx + 1];
+                                b += data[sIdx + 2];
+                                a += data[sIdx + 3];
+                                count++;
+                            }
+                        }
+                        grid[outIdx] = r / count;
+                        grid[outIdx + 1] = g / count;
+                        grid[outIdx + 2] = b / count;
+                        grid[outIdx + 3] = (a / count) < 128 ? 0 : 255;
+                    }
+                }
+            }
+            return grid;
+        }
+
+        // --- Step D: Adaptive Median Cut Color Quantizer ---
+        function extractMedianCutPalette(rgbaBuffer, maxColors) {
+            const pixels = [];
+            for (let i = 0; i < rgbaBuffer.length; i += 4) {
+                if (rgbaBuffer[i + 3] >= 128) {
+                    pixels.push([rgbaBuffer[i], rgbaBuffer[i + 1], rgbaBuffer[i + 2]]);
+                }
+            }
+            if (pixels.length === 0) return [[0, 0, 0]];
+
+            let buckets = [pixels];
+            while (buckets.length < maxColors) {
+                // Find bucket with largest color channel range
+                let bestIdx = -1;
+                let maxRange = -1;
+                let splitChannel = 0;
+
+                for (let i = 0; i < buckets.length; i++) {
+                    const b = buckets[i];
+                    if (b.length < 2) continue;
+                    let minR = 255, maxR = 0, minG = 255, maxG = 0, minB = 255, maxB = 0;
+                    for (let p of b) {
+                        if (p[0] < minR) minR = p[0];
+                        if (p[0] > maxR) maxR = p[0];
+                        if (p[1] < minG) minG = p[1];
+                        if (p[1] > maxG) maxG = p[1];
+                        if (p[2] < minB) minB = p[2];
+                        if (p[2] > maxB) maxB = p[2];
+                    }
+                    const rRange = maxR - minR;
+                    const gRange = maxG - minG;
+                    const bRange = maxB - minB;
+                    const topRange = Math.max(rRange, gRange, bRange);
+                    if (topRange > maxRange) {
+                        maxRange = topRange;
+                        bestIdx = i;
+                        splitChannel = topRange === rRange ? 0 : (topRange === gRange ? 1 : 2);
+                    }
+                }
+
+                if (bestIdx === -1 || maxRange === 0) break;
+
+                const targetBucket = buckets[bestIdx];
+                targetBucket.sort((a, b) => a[splitChannel] - b[splitChannel]);
+                const mid = Math.floor(targetBucket.length / 2);
+                buckets.splice(bestIdx, 1, targetBucket.slice(0, mid), targetBucket.slice(mid));
+            }
+
+            // Compute average RGB per bucket
+            return buckets.map(b => {
+                let r = 0, g = 0, bl = 0;
+                for (let p of b) {
+                    r += p[0];
+                    g += p[1];
+                    bl += p[2];
+                }
+                const len = b.length || 1;
+                return [Math.round(r / len), Math.round(g / len), Math.round(bl / len)];
+            });
+        }
+
+        // Perceptually weighted Euclidean color distance
+        function findNearestColor(r, g, b, palette) {
+            let bestDist = Infinity;
+            let bestColor = palette[0];
+            for (let i = 0; i < palette.length; i++) {
+                const pr = palette[i][0];
+                const pg = palette[i][1];
+                const pb = palette[i][2];
+                const dr = r - pr;
+                const dg = g - pg;
+                const db = b - pb;
+                // Redmean perceptual weighting
+                const rMean = (r + pr) * 0.5;
+                const dist = (2 + rMean / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rMean) / 256) * db * db;
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestColor = palette[i];
+                }
+            }
+            return bestColor;
+        }
+
+        // --- Step E: Color Mapping + Ordered & Error-Diffusion Dithering ---
+        function quantizeAndDither(gridBuffer, w, h, palette, ditherMode, strength) {
+            const work = new Float32Array(gridBuffer.length);
+            for (let i = 0; i < gridBuffer.length; i++) work[i] = gridBuffer[i];
+
+            const out = new Uint8ClampedArray(gridBuffer.length);
+            const spread = strength * 64;
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const idx = (y * w + x) * 4;
+                    if (work[idx + 3] < 128) {
+                        out[idx + 3] = 0;
+                        continue;
+                    }
+
+                    let r = work[idx];
+                    let g = work[idx + 1];
+                    let b = work[idx + 2];
+
+                    // Ordered Bayer Threshold Offset
+                    if (ditherMode === 'bayer2' && strength > 0) {
+                        const threshold = (BAYER_2X2[y & 1][x & 1] / 4 - 0.375) * spread;
+                        r += threshold;
+                        g += threshold;
+                        b += threshold;
+                    } else if (ditherMode === 'bayer4' && strength > 0) {
+                        const threshold = (BAYER_4X4[y & 3][x & 3] / 16 - 0.46875) * spread;
+                        r += threshold;
+                        g += threshold;
+                        b += threshold;
+                    }
+
+                    const nearest = findNearestColor(r, g, b, palette);
+                    out[idx] = nearest[0];
+                    out[idx + 1] = nearest[1];
+                    out[idx + 2] = nearest[2];
+                    out[idx + 3] = 255;
+
+                    // Floyd-Steinberg Error Diffusion
+                    if (ditherMode === 'floyd' && strength > 0) {
+                        const errR = (r - nearest[0]) * strength;
+                        const errG = (g - nearest[1]) * strength;
+                        const errB = (b - nearest[2]) * strength;
+
+                        const distribute = (dx, dy, factor) => {
+                            const nx = x + dx;
+                            const ny = y + dy;
+                            if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                                const nIdx = (ny * w + nx) * 4;
+                                if (work[nIdx + 3] >= 128) {
+                                    work[nIdx] += errR * factor;
+                                    work[nIdx + 1] += errG * factor;
+                                    work[nIdx + 2] += errB * factor;
+                                }
+                            }
+                        };
+
+                        distribute(1, 0, 7 / 16);
+                        distribute(-1, 1, 3 / 16);
+                        distribute(0, 1, 5 / 16);
+                        distribute(1, 1, 1 / 16);
+                    }
+                }
+            }
+            return out;
+        }
+
+        // --- Step F: Optional 1px Silhouette Dark Outline ---
+        function applyPixelOutline(buffer, w, h, palette) {
+            // Pick darkest color in active palette for authentic harmony
+            let darkest = palette[0];
+            let minLum = Infinity;
+            for (let c of palette) {
+                const lum = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2];
+                if (lum < minLum) {
+                    minLum = lum;
+                    darkest = c;
+                }
+            }
+
+            const copy = new Uint8ClampedArray(buffer);
+            const lumAt = (x, y) => {
+                const i = (y * w + x) * 4;
+                if (copy[i + 3] < 128) return -1;
+                return 0.299 * copy[i] + 0.587 * copy[i + 1] + 0.114 * copy[i + 2];
+            };
+
+            for (let y = 1; y < h - 1; y++) {
+                for (let x = 1; x < w - 1; x++) {
+                    const idx = (y * w + x) * 4;
+                    const currLum = lumAt(x, y);
+                    if (currLum <= minLum + 25) continue;
+
+                    const neighbors = [
+                        lumAt(x - 1, y),
+                        lumAt(x + 1, y),
+                        lumAt(x, y - 1),
+                        lumAt(x, y + 1)
+                    ];
+
+                    // Outline transparent edges or dramatic luminance drops
+                    const hasEdge = neighbors.some(n => n === -1 || (currLum - n) > 95);
+                    if (hasEdge) {
+                        buffer[idx] = darkest[0];
+                        buffer[idx + 1] = darkest[1];
+                        buffer[idx + 2] = darkest[2];
+                    }
+                }
+            }
+        }
+
+        // =========================================================================
+        // 7. VIEWPORT RENDERING, ZOOM & PIXEL GRID OVERLAY
+        // =========================================================================
+        function renderViewport() {
+            if (!state.sourceImage) return;
+
+            const nW = state.nativeWidth;
+            const nH = state.nativeHeight;
+
+            // Compute display dimensions (auto-fit or manual zoom)
+            const containerRect = els.dropZone.getBoundingClientRect();
+            const availW = Math.max(200, containerRect.width - 48);
+            const availH = Math.max(200, containerRect.height - 48);
+
+            let scale;
+            if (state.zoom === null) {
+                scale = Math.max(1, Math.floor(Math.min(availW / nW, availH / nH)));
+                if (scale === 1 && Math.min(availW / nW, availH / nH) > 1.2) {
+                    scale = Math.min(availW / nW, availH / nH);
+                }
+                els.zoomFitBtn.textContent = 'Fit';
+            } else {
+                scale = state.zoom;
+                els.zoomFitBtn.textContent = `${scale}×`;
+            }
+
+            const dispW = Math.round(nW * scale);
+            const dispH = Math.round(nH * scale);
+
+            // Render Crisp Nearest-Neighbor Pixel Art Canvas
+            els.displayCanvas.width = dispW;
+            els.displayCanvas.height = dispH;
+            const dCtx = els.displayCanvas.getContext('2d');
+            dCtx.imageSmoothingEnabled = false;
+            dCtx.clearRect(0, 0, dispW, dispH);
+            dCtx.drawImage(els.nativeCanvas, 0, 0, dispW, dispH);
+
+            // Render Original Comparison Canvas
+            els.origDisplayCanvas.width = dispW;
+            els.origDisplayCanvas.height = dispH;
+            const oCtx = els.origDisplayCanvas.getContext('2d');
+            oCtx.imageSmoothingEnabled = true;
+            oCtx.clearRect(0, 0, dispW, dispH);
+            oCtx.drawImage(els.sourceCanvas, 0, 0, dispW, dispH);
+
+            // Update View Mode Visibility
+            if (state.viewMode === 'pixel') {
+                els.splitOverlay.classList.add('hidden');
+                els.splitHandle.classList.add('hidden');
+            } else if (state.viewMode === 'original') {
+                els.splitOverlay.classList.remove('hidden');
+                els.splitOverlay.style.width = '100%';
+                els.splitHandle.classList.add('hidden');
+            } else if (state.viewMode === 'split') {
+                els.splitOverlay.classList.remove('hidden');
+                els.splitHandle.classList.remove('hidden');
+                els.splitOverlay.style.width = `${state.splitPercent}%`;
+                els.splitHandle.style.left = `${state.splitPercent}%`;
+            }
+
+            // Render 1px Grid Overlay if enabled and zoom cell >= 4px
+            if (state.showGrid && (dispW / nW) >= 4) {
+                els.gridCanvas.classList.remove('hidden');
+                els.gridCanvas.width = dispW;
+                els.gridCanvas.height = dispH;
+                const gCtx = els.gridCanvas.getContext('2d');
+                gCtx.clearRect(0, 0, dispW, dispH);
+                gCtx.strokeStyle = 'rgba(255, 255, 255, 0.16)';
+                gCtx.lineWidth = 1;
+
+                const cellW = dispW / nW;
+                const cellH = dispH / nH;
+                gCtx.beginPath();
+                for (let x = 1; x < nW; x++) {
+                    const px = Math.round(x * cellW) + 0.5;
+                    gCtx.moveTo(px, 0);
+                    gCtx.lineTo(px, dispH);
+                }
+                for (let y = 1; y < nH; y++) {
+                    const py = Math.round(y * cellH) + 0.5;
+                    gCtx.moveTo(0, py);
+                    gCtx.lineTo(dispW, py);
+                }
+                gCtx.stroke();
+            } else {
+                els.gridCanvas.classList.add('hidden');
+            }
+        }
+
+        // =========================================================================
+        // 8. UI READOUTS, SWATCHES & EXPORT DIMENSIONS
+        // =========================================================================
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+        }
+
+        function updateUIReadouts() {
+            const nW = state.nativeWidth;
+            const nH = state.nativeHeight;
+            const mult = parseInt(els.upscaleSelect.value, 10);
+
+            els.statGrid.textContent = `${nW} × ${nH} px`;
+            els.statColors.textContent = `${state.activePalette.length}`;
+            els.nativeExportDim.textContent = `${nW}×${nH}`;
+            els.upscaledExportDim.textContent = `${nW * mult}×${nH * mult}`;
+
+            // Render Active Palette Swatches
+            els.swatchStrip.innerHTML = '';
+            state.activePalette.forEach(rgb => {
+                const hex = rgbToHex(rgb[0], rgb[1], rgb[2]);
+                const swatch = document.createElement('button');
+                swatch.className = 'w-5 h-5 rounded-sm border border-white/20 shrink-0 hover:scale-110 transition cursor-pointer';
+                swatch.style.backgroundColor = hex;
+                swatch.title = `${hex} — Click to copy`;
+                swatch.onclick = () => copyToClipboard(hex, `Copied ${hex}`);
+                els.swatchStrip.appendChild(swatch);
+            });
+        }
+
+        function copyToClipboard(text, toastMsg) {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            showToast(toastMsg, 'success');
+        }
+
+        // =========================================================================
+        // 9. PNG DOWNLOAD HANDLERS (1:1 NATIVE & CRISP NEAREST-NEIGHBOR UPSCALED)
+        // =========================================================================
+        function downloadPNG(scaleMultiplier) {
+            if (!state.sourceImage) return;
+            const nW = state.nativeWidth;
+            const nH = state.nativeHeight;
+            const outW = nW * scaleMultiplier;
+            const outH = nH * scaleMultiplier;
+
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = outW;
+            exportCanvas.height = outH;
+            const ctx = exportCanvas.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(els.nativeCanvas, 0, 0, outW, outH);
+
+            const link = document.createElement('a');
+            const suffix = scaleMultiplier === 1 ? `${nW}x${nH}-1to1` : `${outW}x${outH}-${scaleMultiplier}x`;
+            link.download = `${state.fileName}-pixelart-${suffix}.png`;
+            link.href = exportCanvas.toDataURL('image/png');
+            link.click();
+
+            showToast(`Exported ${outW} × ${outH} px PNG`, 'success');
+        }
+
+        // =========================================================================
+        // 10. EVENT LISTENERS & INTERACTIONS
+        // =========================================================================
+
+        // File Upload & Drag-and-Drop
+        function handleImageFile(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                showToast('Please select a valid PNG, JPG, or WebP image.');
+                return;
+            }
+            state.fileName = file.name.replace(/\.[^/.]+$/, '');
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.zoom = null; // Auto-fit new image
+                    loadSourceImage(img);
+                    showToast(`Loaded "${file.name}"`, 'success');
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        els.fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) handleImageFile(e.target.files[0]);
+        });
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            els.dropZone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                els.dragOverlay.classList.remove('hidden');
+            });
+        });
+        ['dragleave', 'drop'].forEach(evt => {
+            els.dropZone.addEventListener(evt, (e) => {
+                e.preventDefault();
+                els.dragOverlay.classList.add('hidden');
+            });
+        });
+        els.dropZone.addEventListener('drop', (e) => {
+            if (e.dataTransfer.files[0]) handleImageFile(e.dataTransfer.files[0]);
+        });
+
+        // Sample Presets
+        document.querySelectorAll('.sample-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.sample-btn').forEach(b => b.classList.remove('bg-studio-800', 'text-white'));
+                btn.classList.add('bg-studio-800', 'text-white');
+                state.zoom = null;
+                generateSampleImage(btn.dataset.sample);
+            });
+        });
+
+        // Grid Resolution Controls
+        function setGridResolution(val) {
+            state.gridMaxDim = parseInt(val, 10);
+            els.gridSizeSlider.value = state.gridMaxDim;
+            els.gridSizeBadge.textContent = `${state.gridMaxDim} px`;
+
+            document.querySelectorAll('.res-preset').forEach(btn => {
+                const isMatch = parseInt(btn.dataset.res, 10) === state.gridMaxDim;
+                btn.className = isMatch
+                    ? 'res-preset py-1.5 rounded-md text-xs font-mono bg-indigo-600 border border-indigo-500 text-white font-semibold transition'
+                    : 'res-preset py-1.5 rounded-md text-xs font-mono bg-studio-900 hover:bg-studio-700 border border-studio-700 text-slate-300 transition';
+            });
+            processPixelArt();
+        }
+
+        document.querySelectorAll('.res-preset').forEach(btn => {
+            btn.addEventListener('click', () => setGridResolution(btn.dataset.res));
+        });
+        els.gridSizeSlider.addEventListener('input', (e) => setGridResolution(e.target.value));
+
+        // Sampling Mode
+        els.sampleCenterBtn.addEventListener('click', () => {
+            state.samplingMode = 'center';
+            els.sampleCenterBtn.className = 'py-1.5 px-2 rounded-md text-xs font-medium bg-indigo-600 text-white transition';
+            els.sampleAverageBtn.className = 'py-1.5 px-2 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition';
+            els.samplingHint.textContent = 'Samples exact cell centers to prevent blurry anti-aliased edge bleeding.';
+            processPixelArt();
+        });
+        els.sampleAverageBtn.addEventListener('click', () => {
+            state.samplingMode = 'average';
+            els.sampleAverageBtn.className = 'py-1.5 px-2 rounded-md text-xs font-medium bg-indigo-600 text-white transition';
+            els.sampleCenterBtn.className = 'py-1.5 px-2 rounded-md text-xs font-medium text-slate-400 hover:text-slate-200 transition';
+            els.samplingHint.textContent = 'Averages all source pixels inside each grid cell for smoother tonal transitions.';
+            processPixelArt();
+        });
+
+        // Palette & Dithering
+        els.paletteSelect.addEventListener('change', (e) => {
+            state.paletteMode = e.target.value;
+            const isAdaptive = state.paletteMode === 'adaptive';
+            els.adaptiveCountWrapper.classList.toggle('hidden', !isAdaptive);
+            els.paletteModeBadge.textContent = isAdaptive ? 'Adaptive' : 'Retro Preset';
+            processPixelArt();
+        });
+
+        els.colorCountSlider.addEventListener('input', (e) => {
+            state.adaptiveColorCount = parseInt(e.target.value, 10);
+            els.colorCountVal.textContent = state.adaptiveColorCount;
+            processPixelArt();
+        });
+
+        els.ditherSelect.addEventListener('change', (e) => {
+            state.ditherMode = e.target.value;
+            els.ditherStrengthWrapper.classList.toggle('hidden', state.ditherMode === 'none');
+            processPixelArt();
+        });
+
+        els.ditherStrengthSlider.addEventListener('input', (e) => {
+            state.ditherStrength = parseInt(e.target.value, 10);
+            els.ditherStrengthVal.textContent = `${state.ditherStrength}%`;
+            processPixelArt();
+        });
+
+        // Pre-Processing Sliders
+        els.contrastSlider.addEventListener('input', (e) => {
+            state.contrast = parseInt(e.target.value, 10);
+            els.contrastVal.textContent = `${state.contrast >= 0 ? '+' : ''}${state.contrast}%`;
+            processPixelArt();
+        });
+        els.saturationSlider.addEventListener('input', (e) => {
+            state.saturation = parseInt(e.target.value, 10);
+            els.saturationVal.textContent = `${state.saturation >= 0 ? '+' : ''}${state.saturation}%`;
+            processPixelArt();
+        });
+        els.brightnessSlider.addEventListener('input', (e) => {
+            state.brightness = parseInt(e.target.value, 10);
+            els.brightnessVal.textContent = `${state.brightness >= 0 ? '+' : ''}${state.brightness}%`;
+            processPixelArt();
+        });
+        els.sharpenSlider.addEventListener('input', (e) => {
+            state.sharpen = parseInt(e.target.value, 10);
+            els.sharpenVal.textContent = `${state.sharpen}%`;
+            processPixelArt();
+        });
+        els.outlineToggle.addEventListener('change', (e) => {
+            state.outline = e.target.checked;
+            processPixelArt();
+        });
+
+        els.resetAdjustmentsBtn.addEventListener('click', () => {
+            state.contrast = 12;
+            state.saturation = 15;
+            state.brightness = 0;
+            state.sharpen = 25;
+            state.outline = false;
+            els.contrastSlider.value = 12;
+            els.contrastVal.textContent = '+12%';
+            els.saturationSlider.value = 15;
+            els.saturationVal.textContent = '+15%';
+            els.brightnessSlider.value = 0;
+            els.brightnessVal.textContent = '0%';
+            els.sharpenSlider.value = 25;
+            els.sharpenVal.textContent = '25%';
+            els.outlineToggle.checked = false;
+            processPixelArt();
+        });
+
+        // View Modes (Pixel / Split / Original)
+        function setViewMode(mode) {
+            state.viewMode = mode;
+            const activeCls = 'px-2.5 py-1.5 rounded-md text-xs font-medium bg-indigo-600 text-white transition flex items-center gap-1.5';
+            const idleCls = 'px-2.5 py-1.5 rounded-md text-xs font-medium text-slate-300 hover:bg-studio-800 transition flex items-center gap-1.5';
+            els.viewPixelBtn.className = mode === 'pixel' ? activeCls : idleCls;
+            els.viewSplitBtn.className = mode === 'split' ? activeCls : idleCls;
+            els.viewOriginalBtn.className = mode === 'original' ? activeCls : idleCls;
+            renderViewport();
+        }
+
+        els.viewPixelBtn.addEventListener('click', () => setViewMode('pixel'));
+        els.viewSplitBtn.addEventListener('click', () => setViewMode('split'));
+        els.viewOriginalBtn.addEventListener('click', () => setViewMode('original'));
+
+        // Split Slider Drag Interaction (Mouse & Touch)
+        let isDraggingSplit = false;
+        function updateSplitPosition(clientX) {
+            const rect = els.stageWrapper.getBoundingClientRect();
+            const pct = Math.max(0, Math.min(100, ((clientX - rect.left) / rect.width) * 100));
+            state.splitPercent = pct;
+            els.splitOverlay.style.width = `${pct}%`;
+            els.splitHandle.style.left = `${pct}%`;
+        }
+
+        els.splitHandle.addEventListener('mousedown', () => isDraggingSplit = true);
+        els.splitHandle.addEventListener('touchstart', () => isDraggingSplit = true, { passive: true });
+        window.addEventListener('mousemove', (e) => {
+            if (isDraggingSplit) updateSplitPosition(e.clientX);
+        });
+        window.addEventListener('touchmove', (e) => {
+            if (isDraggingSplit && e.touches[0]) updateSplitPosition(e.touches[0].clientX);
+        }, { passive: true });
+        window.addEventListener('mouseup', () => isDraggingSplit = false);
+        window.addEventListener('touchend', () => isDraggingSplit = false);
+
+        // Pixel Grid Toggle & Zoom Controls
+        els.toggleGridBtn.addEventListener('click', () => {
+            state.showGrid = !state.showGrid;
+            els.toggleGridBtn.classList.toggle('border-indigo-500', state.showGrid);
+            els.toggleGridBtn.classList.toggle('bg-indigo-600/20', state.showGrid);
+            renderViewport();
+        });
+
+        const ZOOM_STEPS = [1, 2, 3, 4, 6, 8, 12, 16];
+        els.zoomInBtn.addEventListener('click', () => {
+            const curr = state.zoom || Math.max(1, Math.round(els.displayCanvas.width / state.nativeWidth));
+            const next = ZOOM_STEPS.find(z => z > curr) || 16;
+            state.zoom = next;
+            renderViewport();
+        });
+        els.zoomOutBtn.addEventListener('click', () => {
+            const curr = state.zoom || Math.max(1, Math.round(els.displayCanvas.width / state.nativeWidth));
+            const prev = [...ZOOM_STEPS].reverse().find(z => z < curr) || 1;
+            state.zoom = prev;
+            renderViewport();
+        });
+        els.zoomFitBtn.addEventListener('click', () => {
+            state.zoom = null;
+            renderViewport();
+        });
+
+        // Export & Copy Palette Actions
+        els.upscaleSelect.addEventListener('change', updateUIReadouts);
+        els.exportNativeBtn.addEventListener('click', () => downloadPNG(1));
+        els.exportUpscaledBtn.addEventListener('click', () => {
+            const mult = parseInt(els.upscaleSelect.value, 10);
+            downloadPNG(mult);
+        });
+
+        els.copyPaletteBtn.addEventListener('click', () => {
+            const hexList = state.activePalette.map(c => rgbToHex(c[0], c[1], c[2])).join(', ');
+            copyToClipboard(hexList, `Copied ${state.activePalette.length} palette HEX codes`);
+        });
+
+        // Responsive Resize Redraw
+        window.addEventListener('resize', () => {
+            if (state.zoom === null) renderViewport();
+        });
+
+        // Boot with default procedural sample image on load
+        window.onload = () => {
+            generateSampleImage('landscape');
+        };
+    </script>
+</body>
+</html>
